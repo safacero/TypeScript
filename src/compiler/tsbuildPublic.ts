@@ -558,10 +558,7 @@ namespace ts {
         compilerHost.getSourceFile = cache.originalGetSourceFile;
         state.readFileWithCache = cache.originalReadFileWithCache;
         extendedConfigCache.clear();
-        if (moduleResolutionCache) {
-            moduleResolutionCache.directoryToModuleNameMap.clear();
-            moduleResolutionCache.moduleNameToDirectoryMap.clear();
-        }
+        moduleResolutionCache?.clear();
         state.cache = undefined;
     }
 
@@ -1321,20 +1318,14 @@ namespace ts {
             Debug.assert(moduleResolutionCache.moduleNameToDirectoryMap.redirectsMap.size === 0);
             moduleResolutionCache.directoryToModuleNameMap.redirectsMap.set(projPath, moduleResolutionCache.directoryToModuleNameMap.ownMap);
             moduleResolutionCache.moduleNameToDirectoryMap.redirectsMap.set(projPath, moduleResolutionCache.moduleNameToDirectoryMap.ownMap);
+            moduleResolutionCache.directoryToModuleNameMap.setOwnOptions(config.options);
+            moduleResolutionCache.moduleNameToDirectoryMap.setOwnOptions(config.options);
         }
         else {
             // Set correct own map
             Debug.assert(moduleResolutionCache.moduleNameToDirectoryMap.redirectsMap.size > 0);
-
-            const ref: ResolvedProjectReference = {
-                sourceFile: config.options.configFile!,
-                commandLine: config
-            };
-            moduleResolutionCache.directoryToModuleNameMap.setOwnMap(moduleResolutionCache.directoryToModuleNameMap.getOrCreateMapOfCacheRedirects(ref));
-            moduleResolutionCache.moduleNameToDirectoryMap.setOwnMap(moduleResolutionCache.moduleNameToDirectoryMap.getOrCreateMapOfCacheRedirects(ref));
+            moduleResolutionCache.update(config.options);
         }
-        moduleResolutionCache.directoryToModuleNameMap.setOwnOptions(config.options);
-        moduleResolutionCache.moduleNameToDirectoryMap.setOwnOptions(config.options);
     }
 
     function checkConfigFileUpToDateStatus(state: SolutionBuilderState, configFile: string, oldestOutputFileTime: Date, oldestOutputFileName: string): Status.OutOfDateWithSelf | undefined {

@@ -444,6 +444,12 @@ namespace ts {
     export interface ModuleResolutionCache extends NonRelativeModuleNameResolutionCache {
         getOrCreateCacheForDirectory(directoryName: string, redirectedReference?: ResolvedProjectReference): Map<ResolvedModuleWithFailedLookupLocations>;
         /*@internal*/ directoryToModuleNameMap: CacheWithRedirects<ESMap<string, ResolvedModuleWithFailedLookupLocations>>;
+        clear(): void;
+        /**
+         *  Updates with the current compilerOptions the cache will operate with.
+         *  This updates the redirects map as well if needed so module resolutions are cached if they can across the projects
+         */
+        update(options: CompilerOptions): void;
     }
 
     /**
@@ -528,7 +534,31 @@ namespace ts {
         currentDirectory: string,
         getCanonicalFileName: GetCanonicalFileName): ModuleResolutionCache {
 
-        return { getOrCreateCacheForDirectory, getOrCreateCacheForModuleName, directoryToModuleNameMap, moduleNameToDirectoryMap };
+        return {
+            getOrCreateCacheForDirectory,
+            getOrCreateCacheForModuleName,
+            directoryToModuleNameMap,
+            moduleNameToDirectoryMap,
+            clear,
+            update,
+        };
+
+        function clear() {
+            directoryToModuleNameMap.clear();
+            moduleNameToDirectoryMap.clear();
+        }
+
+        function update(options: CompilerOptions) {
+            if (!options.configFile) return;
+            const ref: ResolvedProjectReference = {
+                sourceFile: options.configFile,
+                commandLine: { options } as ParsedCommandLine
+            };
+            directoryToModuleNameMap.setOwnMap(directoryToModuleNameMap.getOrCreateMapOfCacheRedirects(ref));
+            moduleNameToDirectoryMap.setOwnMap(moduleNameToDirectoryMap.getOrCreateMapOfCacheRedirects(ref));
+            directoryToModuleNameMap.setOwnOptions(options);
+            moduleNameToDirectoryMap.setOwnOptions(options);
+        }
 
         function getOrCreateCacheForDirectory(directoryName: string, redirectedReference?: ResolvedProjectReference) {
             const path = toPath(directoryName, currentDirectory, getCanonicalFileName);
